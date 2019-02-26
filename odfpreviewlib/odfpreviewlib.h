@@ -11,7 +11,29 @@
 
 
 enum DocType {none, ods, odt};
+enum StyleFamily {tableNone, tableTable, tableRow, tableColumn, tableCell};
 
+struct Style
+{
+    StyleFamily type;
+    float       width;
+    float       height;
+    QString     fontName;
+    int         fontSize;
+    Qt::AlignmentFlag   align;
+};
+
+struct RowPos
+{
+    float       y;
+    float       h;
+};
+
+struct ColumnPos
+{
+    float       x;
+    float       w;
+};
 
 class OdfPreviewLibSHARED_EXPORT OdfPreviewLib : public QObject
 {
@@ -39,9 +61,14 @@ private:
     DocType                 getDocType();
     void                    setPrinterConfig();
     int                     strMmToPix(QString);
+    QHash<QString, Style>   styles;
+    QHash<int, RowPos>   rowsPos;
+    QHash<int, ColumnPos>   columnsPos;
 
     void                    drawOds(QPainter*);
     void                    drawOdt(QPainter*);
+
+    qreal                   mmToPixels(qreal);
 };
 
 #endif // OdfPreviewLib_H
