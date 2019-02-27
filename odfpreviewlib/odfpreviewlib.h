@@ -13,14 +13,25 @@
 enum DocType {none, ods, odt};
 enum StyleFamily {tableNone, tableTable, tableRow, tableColumn, tableCell};
 
+struct BorderStyle
+{
+    float       size;
+    QString     type;
+    QString     color;
+};
+
 struct Style
 {
-    StyleFamily type;
-    float       width;
-    float       height;
-    QString     fontName;
-    int         fontSize;
+    StyleFamily         type;
+    float               width;
+    float               height;
+    QString             fontName;
+    int                 fontSize;
     Qt::AlignmentFlag   align;
+    BorderStyle         leftBS;     // left border style
+    BorderStyle         rightBS;
+    BorderStyle         topBS;
+    BorderStyle         bottomBS;
 };
 
 struct RowPos
@@ -69,6 +80,7 @@ private:
     void                    drawOdt(QPainter*);
 
     qreal                   mmToPixels(qreal);
+    BorderStyle             parseBorderTypeString(QString);
 };
 
 #endif // OdfPreviewLib_H

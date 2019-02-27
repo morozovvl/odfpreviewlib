@@ -1,3 +1,4 @@
+#include <QtCore/QStringList>
 #include "odfpreviewlib.h"
 #include "quazip/quazip.h"
 #include "quazip/quazipfile.h"
@@ -142,13 +143,22 @@ void OdfPreviewLib::drawOds(QPainter* painter)
         QString name = nl.at(i).toElement().attribute("style:name");
         QString styleFamily = nl.at(i).toElement().attribute("style:family");
         QString alignment = nl.at(i).firstChildElement("style:paragraph-properties").attribute("fo:text-align");
-        Style style;
 
+        Style style;
         style.width = 0;
         style.height = 0;
         style.fontName = "";
         style.fontSize = 0;
         style.align = Qt::AlignLeft;
+
+        BorderStyle bs;
+        bs.size = 0;
+        bs.type = "";
+        bs.color = "";
+        style.leftBS = bs;
+        style.rightBS = bs;
+        style.topBS = bs;
+        style.bottomBS = bs;
 
         if (styleFamily == "table")
         {
@@ -156,19 +166,26 @@ void OdfPreviewLib::drawOds(QPainter* painter)
         }
         else if (styleFamily == "table-row")
         {
-            style.type = tableRow;
-            style.height = QString(nl.at(i).firstChild().toElement().attribute("style:row-height").remove("mm")).toFloat();
+            style.type      = tableRow;
+            style.height    = QString(nl.at(i).firstChild().toElement().attribute("style:row-height").remove("mm")).toFloat();
         }
         else if (styleFamily == "table-column")
         {
-            style.type = tableColumn;
+            style.type  = tableColumn;
             style.width = QString(nl.at(i).firstChild().toElement().attribute("style:column-width").remove("mm")).toFloat();
         }
         else if (styleFamily == "table-cell")
         {
-            style.type = tableCell;
-            style.fontName = nl.at(i).firstChildElement("style:text-properties").attribute("style:font-name");
-            style.fontSize = QString(nl.at(i).firstChildElement("style:text-properties").attribute("fo:font-size").remove("pt")).toInt();
+            style.type      = tableCell;
+            style.fontName  = nl.at(i).firstChildElement("style:text-properties").attribute("style:font-name");
+            style.fontSize  = QString(nl.at(i).firstChildElement("style:text-properties").attribute("fo:font-size").remove("pt")).toInt();
+
+            QDomElement n = nl.at(i).firstChildElement("style:table-cell-properties");
+            style.leftBS    = parseBorderTypeString(n.attribute("fo:border-left"));
+            style.rightBS   = parseBorderTypeString(n.attribute("fo:border-right"));
+            style.topBS     = parseBorderTypeString(n.attribute("fo:border-top"));
+            style.bottomBS  = parseBorderTypeString(n.attribute("fo:border-bottom"));
+
         }
         else
         {
@@ -228,8 +245,11 @@ void OdfPreviewLib::drawOds(QPainter* painter)
         {
             if (cells.at(j).hasChildNodes())
             {
-                QString styleName = cells.at(j).toElement().attribute("table:style-name");
                 QString text = cells.at(j).firstChildElement("text:p").text();
+                QString styleName = cells.at(j).toElement().attribute("table:style-name");
+                if (styleName.size() == 0)
+                    styleName = columns.at(j).toElement().attribute("table:default-cell-style-name");
+
                 int rowSpanned = QString(cells.at(j).toElement().attribute("table:number-rows-spanned")).toInt();
                 int colSpanned = QString(cells.at(j).toElement().attribute("table:number-columns-spanned")).toInt();
 
@@ -245,7 +265,7 @@ void OdfPreviewLib::drawOds(QPainter* painter)
                     rowH = rowsPos[i].h;
 
                 colX = columnsPos[j].x;
-                if (colSpanned > 0)
+                if (colSpanned > 1)
                 {
                     for (int s = 0; s < colSpanned; s++)
                     {
@@ -257,10 +277,25 @@ void OdfPreviewLib::drawOds(QPainter* painter)
 
                 // Draw each cell of table
 
-                QRect rect(mmToPixels(colX), mmToPixels(rowY), mmToPixels(colW), mmToPixels(rowH));
+                int x = mmToPixels(colX);
+                int y = mmToPixels(rowY);
+                int w = mmToPixels(colW);
+                int h = mmToPixels(rowH);
+
+                // Draw text
+                QRect rect(x, y, w, h);
                 QRect boundingRect;
                 painter->drawText(rect, Qt::AlignVCenter | styles[styleName].align, text, &boundingRect);
 
+                // Draw borders
+                if (styles[styleName].leftBS.size > 0)
+                    painter->drawLine(x, y, x, y + h);
+                if (styles[styleName].rightBS.size > 0)
+                    painter->drawLine(x + w, y, x + w, y + h);
+                if (styles[styleName].topBS.size > 0)
+                    painter->drawLine(x, y, x + w, y);
+                if (styles[styleName].bottomBS.size > 0)
+                    painter->drawLine(x, y + h, x + w, y + h);
             }
         }
     }
@@ -284,5 +319,29 @@ int OdfPreviewLib::strMmToPix(QString str)
 qreal OdfPreviewLib::mmToPixels(qreal mm)
 {
     return mm * 0.039370147 * printer->resolution();
+}
+
+
+BorderStyle OdfPreviewLib::parseBorderTypeString(QString str)
+{
+    BorderStyle bs;
+    QStringList borderStr = str.split(" ");
+    QString s = borderStr.at(0);
+    s = s.remove("pt");
+
+    if (s.size() > 0 && s != "none")
+    {
+        bs.size     = s.toFloat();
+        bs.type     = borderStr.at(1);
+        bs.color    = borderStr.at(2);
+    }
+    else
+    {
+        bs.size     = 0;
+        bs.type     = "";
+        bs.color    = "";
+    }
+
+    return bs;
 }
 
