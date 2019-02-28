@@ -13,18 +13,20 @@
 enum DocType {none, ods, odt};
 enum StyleFamily {tableNone, tableTable, tableRow, tableColumn, tableCell};
 
+
 struct BorderStyle
 {
-    float       size;
+    qreal       size;
     QString     type;
     QString     color;
 };
 
-struct Style
+
+struct CellStyle
 {
     StyleFamily         type;
-    float               width;
-    float               height;
+    qreal               width;
+    qreal               height;
     QString             fontName;
     int                 fontSize;
     Qt::AlignmentFlag   align;
@@ -32,18 +34,33 @@ struct Style
     BorderStyle         rightBS;
     BorderStyle         topBS;
     BorderStyle         bottomBS;
+    QString             backgroundColor;
 };
+
+
+struct PageStyle
+{
+    qreal                   width;
+    qreal                   height;
+    QPrinter::Orientation   orientation;
+    qreal                   marginTop;
+    qreal                   marginBottom;
+    qreal                   marginLeft;
+    qreal                   marginRight;
+    qreal                   scale;
+};
+
 
 struct RowPos
 {
-    float       y;
-    float       h;
+    qreal       y;
+    qreal       h;
 };
 
 struct ColumnPos
 {
-    float       x;
-    float       w;
+    qreal       x;
+    qreal       w;
 };
 
 class OdfPreviewLibSHARED_EXPORT OdfPreviewLib : public QObject
@@ -54,8 +71,8 @@ public:
     OdfPreviewLib(QWidget *parent = nullptr);
     ~OdfPreviewLib();
 
-    bool open(QString);
-    bool open(QDomDocument*);
+    bool open(const QString);
+    bool open(const QDomDocument* const);
     void close();
     void preview();
     void print();
@@ -64,23 +81,26 @@ private slots:
     void draw(QPrinter*);
 
 private:
-    QPrinter*               printer;
-    QPrintPreviewDialog*    printPreview;
-    QDomDocument            document;
+    QPrinter*                   printer;
+    QPrintPreviewDialog*        printPreview;
+    QDomDocument                content;
+    QDomDocument                styles;
+    QHash<QString, CellStyle>   cellStyles;
+    QHash<QString, PageStyle>   pageStyles;
+    QHash<QString, QString>     sheetPrintStyleNames;
+    QHash<int, RowPos>          rowsPos;
+    QHash<int, ColumnPos>       columnsPos;
 
-    bool                    unzip(QString);
-    DocType                 getDocType();
-    void                    setPrinterConfig();
-    int                     strMmToPix(QString);
-    QHash<QString, Style>   styles;
-    QHash<int, RowPos>   rowsPos;
-    QHash<int, ColumnPos>   columnsPos;
+    bool                        unzip(QString);
+    DocType                     getDocType() const;
+    void                        setPrinterConfig();
+    void                        drawOds(QPainter*);
+    void                        drawOdt(QPainter*);
 
-    void                    drawOds(QPainter*);
-    void                    drawOdt(QPainter*);
-
-    qreal                   mmToPixels(qreal);
-    BorderStyle             parseBorderTypeString(QString);
+    qreal                       mmToPixels(qreal) const;
+    BorderStyle                 parseBorderTypeString(const QString, const BorderStyle* const = 0) const;
+    void                        loadCellStyles();
+    void                        loadPageStyles();
 };
 
 #endif // OdfPreviewLib_H
