@@ -1,0 +1,2 @@
+I have ODS files which I need to preview and print from my application on Qt5. I do not want to install LibreOffice for this purpose.
+I am going to make library which will do it.

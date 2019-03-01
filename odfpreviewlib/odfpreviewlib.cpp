@@ -192,8 +192,12 @@ void OdfPreviewLib::drawOds(QPainter* painter)
 
     // Calculate cell's positions
 
-    qreal dx = pageStyles[pageStyleName].marginLeft;
-    qreal dy = pageStyles[pageStyleName].marginTop;
+    qreal leftMargin = pageStyles[pageStyleName].marginLeft;
+//    qreal rightMargin = pageStyles[pageStyleName].marginRight;
+    qreal topMargin = pageStyles[pageStyleName].marginTop;
+    qreal bottomMargin = pageStyles[pageStyleName].marginBottom;
+    qreal printablePageHeight = pageStyles[pageStyleName].height - topMargin - bottomMargin;
+    int     pageCounter = 1;
 
     qreal rowY = 0;
     qreal rowH = 0;
@@ -245,14 +249,20 @@ void OdfPreviewLib::drawOds(QPainter* painter)
                 else
                     colW = columnsPos[j].w;
 
-                // Draw each cell of table
+                // If end of printable area reached, add new page
+                if ((rowY + rowH) >= pageCounter * printablePageHeight)
+                {
+                    printer->newPage();
+                    pageCounter++;
+                }
 
-                int x = mmToPixels(colX + dx);
-                int y = mmToPixels(rowY + dy);
+                int x = mmToPixels(colX + leftMargin);
+                int y = mmToPixels(rowY - (pageCounter - 1) * printablePageHeight + topMargin );
                 int w = mmToPixels(colW);
                 int h = mmToPixels(rowH);
 
                 // Draw text
+
                 QRect rect(x, y, w, h);
                 QRect boundingRect;
 
