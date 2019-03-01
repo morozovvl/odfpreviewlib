@@ -85,7 +85,7 @@ private:
     QPrintPreviewDialog*        printPreview;
     QDomDocument                content;
     QDomDocument                styles;
-    QHash<QString, CellStyle>   cellStyles;
+    QHash<QString, CellStyle>   contentStyles;
     QHash<QString, PageStyle>   pageStyles;
     QHash<QString, QString>     sheetPrintStyleNames;
     QHash<int, RowPos>          rowsPos;
@@ -99,8 +99,9 @@ private:
 
     qreal                       mmToPixels(qreal) const;
     BorderStyle                 parseBorderTypeString(const QString, const BorderStyle* const = 0) const;
-    void                        loadCellStyles();
+    void                        loadContentStyles();
     void                        loadPageStyles();
+    QDomNode                    firstNodeWithAttribute(const QDomNodeList, const QString, const QString);
 };
 
 #endif // OdfPreviewLib_H

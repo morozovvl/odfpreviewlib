@@ -158,7 +158,7 @@ void OdfPreviewLib::setPrinterConfig()
 void OdfPreviewLib::drawOds(QPainter* painter)
 {
     loadPageStyles();
-    loadCellStyles();
+    loadContentStyles();
 
     // Calculate row's vertical position and height
     QDomNodeList    rows = content.elementsByTagName("table:table-row");
@@ -168,7 +168,7 @@ void OdfPreviewLib::drawOds(QPainter* painter)
         RowPos pos;
 
         pos.y = y;
-        pos.h = cellStyles[rows.at(i).toElement().attribute("table:style-name")].height;
+        pos.h = contentStyles[rows.at(i).toElement().attribute("table:style-name")].height;
 
         rowsPos.insert(i, pos);
         y += pos.h;
@@ -182,13 +182,15 @@ void OdfPreviewLib::drawOds(QPainter* painter)
         ColumnPos pos;
 
         pos.x = x;
-        pos.w = cellStyles[columns.at(i).toElement().attribute("table:style-name")].width;
+        pos.w = contentStyles[columns.at(i).toElement().attribute("table:style-name")].width;
 
         columnsPos.insert(i, pos);
         x += pos.w;
     }
 
-    QString pageStyleName = sheetPrintStyleNames.value(content.elementsByTagName("table:table").at(0).toElement().attribute("table:name"));
+    QString pageStyleName = content.elementsByTagName("table:table").at(0).toElement().attribute("table:style-name");
+    pageStyleName = firstNodeWithAttribute(content.elementsByTagName("style:style"), "style:name", pageStyleName).toElement().attribute("style:master-page-name");
+    pageStyleName = sheetPrintStyleNames.value(pageStyleName);
 
     // Calculate cell's positions
 
@@ -266,19 +268,19 @@ void OdfPreviewLib::drawOds(QPainter* painter)
                 QRect rect(x, y, w, h);
                 QRect boundingRect;
 
-                if (cellStyles[styleName].backgroundColor.size() > 0)
-                    painter->fillRect(rect, QBrush(QColor(cellStyles[styleName].backgroundColor)));
+                if (contentStyles[styleName].backgroundColor.size() > 0)
+                    painter->fillRect(rect, QBrush(QColor(contentStyles[styleName].backgroundColor)));
 
-                painter->drawText(rect, Qt::AlignVCenter | cellStyles[styleName].align, text, &boundingRect);
+                painter->drawText(rect, Qt::AlignVCenter | contentStyles[styleName].align, text, &boundingRect);
 
                 // Draw borders
-                if (cellStyles[styleName].leftBS.size > 0)
+                if (contentStyles[styleName].leftBS.size > 0)
                     painter->drawLine(x, y, x, y + h);
-                if (cellStyles[styleName].rightBS.size > 0)
+                if (contentStyles[styleName].rightBS.size > 0)
                     painter->drawLine(x + w, y, x + w, y + h);
-                if (cellStyles[styleName].topBS.size > 0)
+                if (contentStyles[styleName].topBS.size > 0)
                     painter->drawLine(x, y, x + w, y);
-                if (cellStyles[styleName].bottomBS.size > 0)
+                if (contentStyles[styleName].bottomBS.size > 0)
                     painter->drawLine(x, y + h, x + w, y + h);
             }
         }
@@ -327,7 +329,7 @@ BorderStyle OdfPreviewLib::parseBorderTypeString(const QString str, const Border
 }
 
 
-void OdfPreviewLib::loadCellStyles()
+void OdfPreviewLib::loadContentStyles()
 {
     // Loading styles of rows, columns, cells from document
     QDomNodeList    nl = content.elementsByTagName("style:style");
@@ -395,7 +397,7 @@ void OdfPreviewLib::loadCellStyles()
             style.align = Qt::AlignHCenter;
 
         if (style.type != tableNone)
-            cellStyles.insert(name, style);
+            contentStyles.insert(name, style);
     }
 }
 
@@ -410,8 +412,11 @@ void OdfPreviewLib::loadPageStyles()
 
         PageStyle style;
         style.width         = QString(e.attribute("fo:page-width").remove("mm")).toFloat();
+        if (style.width == 0)
+            style.width = 210;
         style.height        = QString(e.attribute("fo:page-height").remove("mm")).toFloat();
-        style.width         = QString(e.attribute("fo:page-width").remove("mm")).toFloat();
+        if (style.height == 0)
+            style.height = 297;
         style.orientation   = e.attribute("style:print-orientation") == "portrait" ? QPrinter::Portrait : QPrinter::Landscape;
         style.marginTop     = QString(e.attribute("fo:margin-top").remove("mm")).toFloat();
         style.marginBottom  = QString(e.attribute("fo:margin-bottom").remove("mm")).toFloat();
@@ -424,13 +429,20 @@ void OdfPreviewLib::loadPageStyles()
     QDomNodeList nl1 = styles.elementsByTagName("style:master-page");
     for (int i = 0; i < nl1.count(); i++)
     {
-        QString name = nl1.at(i).toElement().attribute("style:display-name");
-        if (name.contains("PageStyle_"))
-        {
-            name.remove("PageStyle_");
-
-            QString styleName = nl1.at(i).toElement().attribute("style:page-layout-name");
-            sheetPrintStyleNames.insert(name, styleName);
-        }
+        QString name = nl1.at(i).toElement().attribute("style:name");
+        QString styleName = nl1.at(i).toElement().attribute("style:page-layout-name");
+        sheetPrintStyleNames.insert(name, styleName);
     }
 }
+
+
+QDomNode OdfPreviewLib::firstNodeWithAttribute(const QDomNodeList nl, const QString attr, const QString val)
+{
+    for (int i = 0; i < nl.count(); i++)
+    {
+        if (nl.at(i).toElement().attribute(attr) == val)
+            return nl.at(i);
+    }
+    return QDomNode();
+}
+
