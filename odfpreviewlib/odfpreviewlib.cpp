@@ -266,12 +266,15 @@ void OdfPreviewLib::drawOds(QPainter* painter)
                 // Draw text
 
                 QRect rect(x, y, w, h);
-                QRect boundingRect;
+                QTextOption textOption;
 
                 if (contentStyles[styleName].backgroundColor.size() > 0)
                     painter->fillRect(rect, QBrush(QColor(contentStyles[styleName].backgroundColor)));
 
-                painter->drawText(rect, Qt::AlignVCenter | contentStyles[styleName].align, text, &boundingRect);
+                textOption.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+                textOption.setAlignment(contentStyles[styleName].align);
+                painter->setFont(QFont(contentStyles[styleName].fontName, contentStyles[styleName].fontSize));
+                painter->drawText(rect, text, textOption);
 
                 // Draw borders
                 if (contentStyles[styleName].leftBS.size > 0)
@@ -337,7 +340,6 @@ void OdfPreviewLib::loadContentStyles()
     {
         QString name = nl.at(i).toElement().attribute("style:name");
         QString styleFamily = nl.at(i).toElement().attribute("style:family");
-        QString alignment = nl.at(i).firstChildElement("style:paragraph-properties").attribute("fo:text-align");
 
         CellStyle style;
         style.width = 0;
@@ -383,18 +385,29 @@ void OdfPreviewLib::loadContentStyles()
             style.bottomBS  = parseBorderTypeString(n.attribute("fo:border-bottom"), &bs);
 
             style.backgroundColor = nl.at(i).firstChild().toElement().attribute("fo:background-color");
+
+            QString hAlignment = nl.at(i).firstChildElement("style:paragraph-properties").attribute("fo:text-align");
+            if (hAlignment == "start")
+                style.align = Qt::AlignLeft;
+            else if (hAlignment == "end")
+                style.align = Qt::AlignRight;
+            else if (hAlignment == "center")
+                style.align = Qt::AlignHCenter;
+
+            QString vAlignment = nl.at(i).firstChildElement("style:table-cell-properties").attribute("style:vertical-align");
+
+            if (vAlignment == "top")
+                style.align = style.align | Qt::AlignTop;
+            else if (vAlignment == "bottom")
+                style.align = style.align | Qt::AlignBottom;
+            else if (vAlignment == "middle")
+                style.align = style.align | Qt::AlignVCenter;
+
         }
         else
         {
             style.type = tableNone;
         }
-
-        if (alignment == "start")
-            style.align = Qt::AlignLeft;
-        else if (alignment == "end")
-            style.align = Qt::AlignRight;
-        if (alignment == "center")
-            style.align = Qt::AlignHCenter;
 
         if (style.type != tableNone)
             contentStyles.insert(name, style);

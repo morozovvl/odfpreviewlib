@@ -29,7 +29,7 @@ struct CellStyle
     qreal               height;
     QString             fontName;
     int                 fontSize;
-    Qt::AlignmentFlag   align;
+    Qt::Alignment       align;
     BorderStyle         leftBS;     // left border style
     BorderStyle         rightBS;
     BorderStyle         topBS;
